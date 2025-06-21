@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Terapias</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons (Correct UMD version for vanilla JS) -->
+    <script src="https://unpkg.com/lucide/dist/umd/lucide.min.js"></script>
+
+    <style>
+        /* Estilo base para a aplicação */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        /* Custom scrollbar para melhor aparência */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Animação de fade-in */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Container Principal -->
+    <div id="app-container" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Cabeçalho -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-slate-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mr-3 text-teal-600"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+                Gestor de Terapias
+            </h1>
+            <p class="text-slate-600 mt-1">Controle de pagamentos e reembolsos das terapias.</p>
+            <p id="user-info" class="text-xs text-gray-500 mt-2 rounded-md bg-gray-200 p-2 hidden"></p>
+        </header>
+
+        <!-- Spinner de Carregamento -->
+        <div id="loading-spinner" class="flex justify-center items-center h-64">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-teal-500"></div>
+        </div>
+
+        <!-- Conteúdo da Aplicação (inicialmente oculto) -->
+        <main id="app-content" class="hidden">
+            
+            <!-- Seção de Cadastros -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- Card: Adicionar Terapeuta -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 text-slate-700">Adicionar Novo Terapeuta</h2>
+                    <form id="add-therapist-form">
+                        <div class="mb-4">
+                            <label for="therapist-name" class="block text-sm font-medium text-gray-700 mb-1">Nome do Terapeuta</label>
+                            <input type="text" id="therapist-name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+                        <div class="mb-4">
+                            <label for="therapist-specialty" class="block text-sm font-medium text-gray-700 mb-1">Especialidade</label>
+                            <input type="text" id="therapist-specialty" placeholder="Ex: Fonoaudiologia, T.O." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+                        <button type="submit" class="w-full bg-teal-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-teal-700 transition duration-300 flex items-center justify-center">
+                            <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>
+                            Salvar Terapeuta
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Card: Registrar Atendimento -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 text-slate-700">Registrar Novo Atendimento</h2>
+                    <form id="add-session-form">
+                        <div class="mb-4">
+                            <label for="session-therapist" class="block text-sm font-medium text-gray-700 mb-1">Terapeuta</label>
+                            <select id="session-therapist" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <option>Carregando terapeutas...</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="session-date" class="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                                <input type="date" id="session-date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            </div>
+                            <div>
+                                <label for="session-value" class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                                <input type="number" step="0.01" id="session-value" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="150,00">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center">
+                            <i data-lucide="calendar-plus" class="w-4 h-4 mr-2"></i>
+                            Registrar Atendimento
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Seção de Controle Mensal -->
+            <section class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex flex-wrap justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800">Painel de Controle Mensal</h2>
+                    <div class="flex items-center gap-2 mt-4 sm:mt-0">
+                        <label for="month-filter" class="text-sm font-medium">Mês:</label>
+                        <input type="month" id="month-filter" class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                </div>
+
+                <div id="monthly-summary-container" class="space-y-6">
+                    <!-- Cards de resumo mensal serão inseridos aqui -->
+                    <p class="text-center text-gray-500 py-8">Selecione um mês para ver o resumo ou registre um atendimento.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para Notificações -->
+    <div id="notification-modal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4 text-center">
+            <p id="notification-message" class="text-lg"></p>
+            <button onclick="document.getElementById('notification-modal').classList.add('hidden')" class="mt-4 bg-teal-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-teal-700 transition duration-300">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, addDoc, setDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIGURAÇÃO ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'terapia-manager-app';
+        let firebaseConfig;
+        try {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.error("Firebase config not found or invalid. Using placeholder.");
+            // Use placeholder config for local development if needed, but it won't connect.
+            firebaseConfig = { apiKey: "AIza...", authDomain: "...", projectId: "..." };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let userId = null;
+        let therapists = [];
+        let sessions = [];
+        let summaries = [];
+
+        // --- ELEMENTOS DO DOM ---
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const appContent = document.getElementById('app-content');
+        const addTherapistForm = document.getElementById('add-therapist-form');
+        const addSessionForm = document.getElementById('add-session-form');
+        const sessionTherapistSelect = document.getElementById('session-therapist');
+        const monthFilter = document.getElementById('month-filter');
+        const monthlySummaryContainer = document.getElementById('monthly-summary-container');
+        const userInfoDisplay = document.getElementById('user-info');
+
+        // --- FUNÇÕES DE UTILIDADE ---
+        function showNotification(message) {
+            document.getElementById('notification-message').textContent = message;
+            document.getElementById('notification-modal').classList.remove('hidden');
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+        
+        function getMonthYear(dateString) {
+            const date = new Date(dateString + 'T00:00:00'); // Treat as local time
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            return `${year}-${month}`;
+        }
+        
+        // --- AUTENTICAÇÃO E INICIALIZAÇÃO ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userInfoDisplay.textContent = `ID do Usuário: ${userId}`;
+                userInfoDisplay.classList.remove('hidden');
+                console.log("Usuário autenticado:", userId);
+                await initializeDataListeners();
+            } else {
+                console.log("Nenhum usuário logado. Tentando login anônimo ou customizado.");
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Erro na autenticação:", error);
+                    showNotification("Erro ao autenticar. Não foi possível carregar os dados.");
+                }
+            }
+        });
+
+        async function initializeDataListeners() {
+            if (!userId) return;
+
+            // Paths do Firestore
+            const therapistsCol = collection(db, 'artifacts', appId, 'users', userId, 'therapists');
+            const sessionsCol = collection(db, 'artifacts', appId, 'users', userId, 'sessions');
+            const summariesCol = collection(db, 'artifacts', appId, 'users', userId, 'summaries');
+
+            // Listeners em tempo real
+            onSnapshot(query(therapistsCol), (snapshot) => {
+                therapists = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTherapistsSelect();
+                renderMonthlySummary();
+                lucide.createIcons();
+            });
+
+            onSnapshot(query(sessionsCol), (snapshot) => {
+                sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMonthlySummary();
+                lucide.createIcons();
+            });
+            
+             onSnapshot(query(summariesCol), (snapshot) => {
+                summaries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMonthlySummary();
+                lucide.createIcons();
+            });
+
+            // Configuração inicial
+            const today = new Date();
+            monthFilter.value = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+            loadingSpinner.classList.add('hidden');
+            appContent.classList.remove('hidden');
+            appContent.classList.add('fade-in');
+            lucide.createIcons();
+        }
+
+        // --- FUNÇÕES DE RENDERIZAÇÃO ---
+        function renderTherapistsSelect() {
+            sessionTherapistSelect.innerHTML = '<option value="" disabled selected>Selecione um terapeuta</option>';
+            // Sorting therapists alphabetically
+            const sortedTherapists = [...therapists].sort((a, b) => a.name.localeCompare(b.name));
+            sortedTherapists.forEach(therapist => {
+                const option = document.createElement('option');
+                option.value = therapist.id;
+                option.textContent = `${therapist.name} (${therapist.specialty})`;
+                sessionTherapistSelect.appendChild(option);
+            });
+        }
+
+        function renderMonthlySummary() {
+            if (!userId) return;
+            const selectedMonth = monthFilter.value; // Formato YYYY-MM
+            if (!selectedMonth) {
+                monthlySummaryContainer.innerHTML = `<p class="text-center text-gray-500 py-8">Selecione um mês para ver o resumo.</p>`;
+                return;
+            }
+
+            const sessionsInMonth = sessions.filter(s => getMonthYear(s.date) === selectedMonth);
+
+            if (sessionsInMonth.length === 0) {
+                monthlySummaryContainer.innerHTML = `<p class="text-center text-gray-500 py-8">Nenhum atendimento registrado para ${selectedMonth}.</p>`;
+                return;
+            }
+
+            const summaryByTherapist = sessionsInMonth.reduce((acc, session) => {
+                if (!acc[session.therapistId]) {
+                    const therapistInfo = therapists.find(t => t.id === session.therapistId);
+                    acc[session.therapistId] = {
+                        therapistName: therapistInfo ? therapistInfo.name : 'Terapeuta não encontrado',
+                        therapistSpecialty: therapistInfo ? therapistInfo.specialty : '',
+                        sessions: [],
+                        totalValue: 0,
+                    };
+                }
+                acc[session.therapistId].sessions.push(session);
+                acc[session.therapistId].totalValue += parseFloat(session.value);
+                return acc;
+            }, {});
+
+            monthlySummaryContainer.innerHTML = '';
+            
+            for (const therapistId in summaryByTherapist) {
+                const data = summaryByTherapist[therapistId];
+                const summaryId = `${selectedMonth}-${therapistId}`;
+                const summaryData = summaries.find(s => s.id === summaryId) || {};
+                
+                const card = document.createElement('div');
+                card.className = 'bg-gray-50 p-5 rounded-lg border border-gray-200 fade-in';
+                card.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-start">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">${data.therapistName}</h3>
+                            <p class="text-sm text-slate-500">${data.therapistSpecialty}</p>
+                            <p class="text-sm text-slate-600 mt-1">${data.sessions.length} atendimento(s) no mês</p>
+                        </div>
+                        <div class="text-right mt-2 sm:mt-0">
+                            <p class="text-sm text-slate-600">Valor Total</p>
+                            <p class="text-2xl font-bold text-teal-600">${formatCurrency(data.totalValue)}</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t border-gray-200 pt-4">
+                        <h4 class="font-semibold text-md mb-3 text-slate-700">Checklist de Pagamento e Reembolso</h4>
+                        <ul class="space-y-3">
+                            ${createChecklistItem('pix', 'Anexar Comprovante PIX', summaryData.pixProofFileName, summaryId, therapistId)}
+                            ${createChecklistItem('invoice', 'Anexar Nota Fiscal (PDF/Foto)', summaryData.invoiceFileName, summaryId, therapistId)}
+                            ${createChecklistItem('reimbursementRequest', 'Anexar Pedido de Reembolso', summaryData.reimbursementRequestFileName, summaryId, therapistId)}
+                            
+                            <li class="flex items-center justify-between p-2 rounded-md ${summaryData.reimbursementApproved ? 'bg-green-100' : 'bg-gray-100'}">
+                                <div class="flex items-center">
+                                    <i data-lucide="${summaryData.reimbursementApproved ? 'check-circle-2' : 'circle'}" class="w-5 h-5 mr-3 ${summaryData.reimbursementApproved ? 'text-green-600' : 'text-gray-500'}"></i>
+                                    <span class="font-medium ${summaryData.reimbursementApproved ? 'text-green-800' : 'text-gray-800'}">Reembolso Aprovado</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                  <input type="checkbox" data-summary-id="${summaryId}" data-therapist-id="${therapistId}" class="sr-only peer reimbursement-checkbox" ${summaryData.reimbursementApproved ? 'checked' : ''}>
+                                  <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+                `;
+                monthlySummaryContainer.appendChild(card);
+            }
+            lucide.createIcons();
+        }
+        
+        function createChecklistItem(type, label, fileName, summaryId, therapistId) {
+            const hasFile = fileName && fileName.trim() !== '';
+            const icon = hasFile ? 'file-check-2' : 'file-plus-2';
+            const color = hasFile ? 'text-green-600' : 'text-blue-600';
+            const bgColor = hasFile ? 'bg-green-100' : 'bg-blue-50';
+            const fileText = hasFile ? `Arquivo: <b>${fileName}</b>` : 'Nenhum arquivo';
+
+            return `
+                <li class="flex items-center justify-between p-2 rounded-md ${bgColor}">
+                    <div class="flex items-center">
+                        <i data-lucide="${icon}" class="w-5 h-5 mr-3 ${color}"></i>
+                        <div>
+                            <span class="font-medium ${color}">${label}</span>
+                            <p class="text-xs text-gray-600">${fileText}</p>
+                        </div>
+                    </div>
+                    <label class="cursor-pointer bg-white border border-gray-300 text-gray-700 text-sm font-semibold py-1 px-3 rounded-lg hover:bg-gray-100 transition">
+                        Anexar
+                        <input type="file" class="hidden file-upload-input" data-type="${type}" data-summary-id="${summaryId}" data-therapist-id="${therapistId}">
+                    </label>
+                </li>
+            `;
+        }
+
+        // --- MANIPULADORES DE EVENTOS ---
+        addTherapistForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('therapist-name').value.trim();
+            const specialty = document.getElementById('therapist-specialty').value.trim();
+            if (!name || !userId) return;
+
+            try {
+                const therapistsCol = collection(db, 'artifacts', appId, 'users', userId, 'therapists');
+                await addDoc(therapistsCol, { name, specialty });
+                showNotification('Terapeuta adicionado com sucesso!');
+                addTherapistForm.reset();
+            } catch (error) {
+                console.error("Erro ao adicionar terapeuta:", error);
+                showNotification('Ocorreu um erro ao salvar o terapeuta.');
+            }
+        });
+
+        addSessionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const therapistId = sessionTherapistSelect.value;
+            const date = document.getElementById('session-date').value;
+            const value = document.getElementById('session-value').value;
+
+            if (!therapistId || !date || !value || !userId) {
+                showNotification('Por favor, preencha todos os campos do atendimento.');
+                return;
+            }
+
+            try {
+                const sessionsCol = collection(db, 'artifacts', appId, 'users', userId, 'sessions');
+                await addDoc(sessionsCol, { therapistId, date, value: parseFloat(value) });
+                showNotification('Atendimento registrado com sucesso!');
+                addSessionForm.reset();
+                document.getElementById('session-date').valueAsDate = new Date(); // Reset date to today
+            } catch (error) {
+                console.error("Erro ao registrar atendimento:", error);
+                showNotification('Ocorreu um erro ao registrar o atendimento.');
+            }
+        });
+        
+        monthFilter.addEventListener('change', renderMonthlySummary);
+        
+        monthlySummaryContainer.addEventListener('change', async (e) => {
+            // Manipulador para o checkbox de reembolso
+            if (e.target.classList.contains('reimbursement-checkbox')) {
+                const checkbox = e.target;
+                const summaryId = checkbox.dataset.summaryId;
+                const isChecked = checkbox.checked;
+                const summaryRef = doc(db, 'artifacts', appId, 'users', userId, 'summaries', summaryId);
+                try {
+                    await setDoc(summaryRef, { reimbursementApproved: isChecked }, { merge: true });
+                    console.log(`Summary ${summaryId} updated: reimbursementApproved=${isChecked}`);
+                } catch (error) {
+                    console.error("Erro ao atualizar status do reembolso:", error);
+                    showNotification("Erro ao atualizar o status.");
+                    checkbox.checked = !isChecked; // Reverte a mudança visual em caso de erro
+                }
+            }
+            
+            // Manipulador para o upload de arquivos
+            if (e.target.classList.contains('file-upload-input')) {
+                const input = e.target;
+                const file = input.files[0];
+                if (!file) return;
+
+                const summaryId = input.dataset.summaryId;
+                const type = input.dataset.type; // 'pix', 'invoice', etc.
+                const fileName = file.name;
+
+                // **NOTA:** Em uma aplicação real, aqui seria o local para fazer o upload do arquivo
+                // para um serviço como o Firebase Storage. Para este exemplo, vamos apenas
+                // salvar o nome do arquivo no Firestore para simular o anexo.
+                
+                const summaryRef = doc(db, 'artifacts', appId, 'users', userId, 'summaries', summaryId);
+                const fieldToUpdate = `${type}ProofFileName`;
+
+                try {
+                    await setDoc(summaryRef, { [fieldToUpdate]: fileName }, { merge: true });
+                    showNotification(`Arquivo "${fileName}" anexado com sucesso!`);
+                    // O `onSnapshot` vai atualizar a UI automaticamente.
+                } catch (error) {
+                    console.error("Erro ao anexar arquivo:", error);
+                    showNotification("Erro ao salvar referência do arquivo.");
+                }
+            }
+        });
+
+        // --- INICIALIZAÇÃO ---
+        document.getElementById('session-date').valueAsDate = new Date();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
